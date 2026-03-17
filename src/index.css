@@ -1,8 +1,8 @@
 :root {
-  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'Helvetica Neue', Arial, sans-serif;
-  line-height: 1.5;
+  font-family: 'Poppins', 'Noto Sans SC', -apple-system, BlinkMacSystemFont, sans-serif;
+  line-height: 1.6;
   font-weight: 400;
-  color-scheme: dark;
+  color-scheme: light;
   font-synthesis: none;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
@@ -13,9 +13,14 @@ body {
   margin: 0;
   min-width: 320px;
   min-height: 100vh;
-  background: #000000;
+  background: #FFF9F0;
 }
 
 #root {
   width: 100%;
+}
+
+/* Hide default nav */
+.nav {
+  display: none;
 }

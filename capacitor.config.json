@@ -1,0 +1,13 @@
+{
+  "appId": "com.babyfeed.app",
+  "appName": "宝宝喂养记录",
+  "webDir": "dist",
+  "bundledWebRuntime": false,
+  "npmClient": "npm",
+  "android": {
+    "allowMixedContent": true
+  },
+  "server": {
+    "androidScheme": "https"
+  }
+}
