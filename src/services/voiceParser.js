@@ -6,6 +6,26 @@ const MILK_KEYWORDS = ['喝奶', '奶', '配方奶', '母乳', '奶瓶', '奶粉
 // 辅食关键词
 const SOLID_KEYWORDS = ['辅食', '米粉', '粥', '面条', '果泥', '蔬果', '吃'];
 
+// 辅食具体名称关键词
+const FOOD_NAME_KEYWORDS = [
+  // 粥类
+  '白粥', '清粥', '小米粥', '南瓜粥', '肉粥', '鱼粥', '蔬菜粥',
+  // 米粉类
+  '米粉', '米糊', '麦片', '婴儿米粉',
+  // 面食类
+  '面条', '细面条', '蝴蝶面', '馒头', '包子',
+  // 蛋类
+  '蒸蛋', '鸡蛋羹', '鸡蛋', '蛋黄',
+  // 水果类
+  '苹果', '香蕉', '梨', '橙子', '蓝莓', '草莓', '火龙果', '猕猴桃', '西瓜', '桃子',
+  // 蔬菜类
+  '南瓜', '胡萝卜', '土豆', '红薯', '青菜', '菠菜', '西兰花', '菜心', '白菜',
+  // 肉类
+  '肉泥', '鱼肉', '鸡肉', '猪肉', '牛肉', '肝泥', '肉松',
+  // 其他
+  '酸奶', '豆腐', '溶豆', '小饼干', '磨牙棒'
+];
+
 // 解析时间
 const parseTime = (text) => {
   const now = new Date();
@@ -51,6 +71,21 @@ const parseType = (text) => {
   for (const keyword of SOLID_KEYWORDS) {
     if (text.includes(keyword)) {
       return RecordType.SOLID;
+    }
+  }
+
+  return null;
+};
+
+// 解析具体辅食名称
+const parseFoodName = (text, type) => {
+  // 只有辅食类型才解析具体名称
+  if (type !== RecordType.SOLID) return null;
+
+  // 检查具体辅食名称关键词
+  for (const keyword of FOOD_NAME_KEYWORDS) {
+    if (text.includes(keyword)) {
+      return keyword;
     }
   }
 
@@ -130,11 +165,14 @@ export const parseVoiceInput = (text) => {
     return null;
   }
 
+  const foodName = parseFoodName(text, type);
+
   return {
     timestamp: timestamp.toISOString(),
     type,
     amount: amountData.amount,
     unit: amountData.unit,
+    foodName,
     originalText: text,
   };
 };
@@ -147,4 +185,12 @@ export const getTypeName = (type) => {
 // 获取类型的图标
 export const getTypeIcon = (type) => {
   return type === RecordType.MILK ? '🍼' : '🍚';
+};
+
+// 获取带食物名称的显示文本
+export const getDisplayName = (record) => {
+  if (record.type === RecordType.SOLID && record.foodName) {
+    return `辅食 (${record.foodName})`;
+  }
+  return getTypeName(record.type);
 };

@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import './App.css';
 import { getRecords, saveRecord, deleteRecord, getTodayRecords, getWeekRecords } from './services/storageService';
-import { parseVoiceInput, getTypeName, getTypeIcon } from './services/voiceParser';
+import { parseVoiceInput, getTypeName, getTypeIcon, getDisplayName } from './services/voiceParser';
 import { generateWeeklyReport } from './services/reportService';
 import { VoiceRecognition, isSpeechRecognitionSupported } from './services/voiceRecognition';
 
@@ -128,6 +128,50 @@ function App() {
     return date.toLocaleDateString('zh-CN', { month: 'short', day: 'numeric' });
   };
 
+  // 获取一周的日期范围
+  const getWeekRange = (date) => {
+    const start = new Date(date);
+    const day = start.getDay();
+    const diff = start.getDate() - day + (day === 0 ? -6 : 1); // 周一到周日
+    start.setDate(diff);
+    start.setHours(0, 0, 0, 0);
+
+    const end = new Date(start);
+    end.setDate(start.getDate() + 6);
+    end.setHours(23, 59, 59, 999);
+
+    return { start, end };
+  };
+
+  // 按周分组记录
+  const groupRecordsByWeek = (records) => {
+    const groups = {};
+
+    records.forEach(record => {
+      const date = new Date(record.timestamp);
+      const { start, end } = getWeekRange(date);
+      const key = `${start.getTime()}-${end.getTime()}`;
+
+      if (!groups[key]) {
+        groups[key] = {
+          start,
+          end,
+          records: []
+        };
+      }
+      groups[key].records.push(record);
+    });
+
+    // 按时间倒序排列
+    return Object.values(groups).sort((a, b) => b.start - a.start);
+  };
+
+  // 格式化周范围显示
+  const formatWeekRange = (start, end) => {
+    const options = { month: 'short', day: 'numeric' };
+    return `${start.toLocaleDateString('zh-CN', options)} - ${end.toLocaleDateString('zh-CN', options)}`;
+  };
+
   return (
     <div className="app">
       <header className="header">
@@ -175,7 +219,7 @@ function App() {
                 <div className="confirm-card">
                   <div className="confirm-icon">{getTypeIcon(parsedRecord.type)}</div>
                   <div className="confirm-info">
-                    <p><strong>{getTypeName(parsedRecord.type)}</strong></p>
+                    <p><strong>{getTypeName(parsedRecord.type)}{parsedRecord.foodName ? ` (${parsedRecord.foodName})` : ''}</strong></p>
                     <p>时间：{formatTime(parsedRecord.timestamp)}</p>
                     <p>数量：{parsedRecord.amount}{parsedRecord.unit}</p>
                   </div>
@@ -212,7 +256,7 @@ function App() {
                     <div key={record.id} className="record-item">
                       <span className="record-icon">{getTypeIcon(record.type)}</span>
                       <span className="record-info">
-                        <strong>{getTypeName(record.type)}</strong>
+                        <strong>{getTypeName(record.type)}{record.foodName ? ` (${record.foodName})` : ''}</strong>
                         <span>{record.amount}{record.unit}</span>
                       </span>
                       <span className="record-time">
@@ -235,21 +279,40 @@ function App() {
                 <p>暂无记录，快去记录吧！</p>
               </div>
             ) : (
-              <div className="record-list">
-                {records.map(record => (
-                  <div key={record.id} className="record-item">
-                    <span className="record-icon">{getTypeIcon(record.type)}</span>
-                    <div className="record-info">
-                      <strong>{getTypeName(record.type)}</strong>
-                      <span>{record.amount}{record.unit}</span>
+              <div className="week-groups">
+                {groupRecordsByWeek(records).map(group => (
+                  <div key={`${group.start.getTime()}-${group.end.getTime()}`} className="week-group">
+                    <div className="week-header">
+                      <span className="week-range">{group.start.getFullYear()}年 {formatWeekRange(group.start, group.end)}</span>
+                      <span className="week-count">{group.records.length} 条记录</span>
                     </div>
-                    <div className="record-right">
-                      <span className="record-time">
-                        {formatDate(record.timestamp)} {formatTime(record.timestamp)}
-                      </span>
-                      <button className="btn-delete" onClick={() => handleDelete(record.id)}>
-                        删除
-                      </button>
+                    <div className="timeline">
+                      {group.records
+                        .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
+                        .map(record => (
+                          <div key={record.id} className="timeline-item">
+                            <div className="timeline-time">
+                              <span className="timeline-date">{formatDate(record.timestamp)}</span>
+                              <span className="timeline-clock">{formatTime(record.timestamp)}</span>
+                            </div>
+                            <div className="timeline-marker">
+                              <span className="timeline-dot"></span>
+                              <span className="timeline-line"></span>
+                            </div>
+                            <div className="timeline-content">
+                              <div className="record-card-mini">
+                                <span className="record-icon">{getTypeIcon(record.type)}</span>
+                                <div className="record-details">
+                                  <strong>{getTypeName(record.type)}{record.foodName ? ` (${record.foodName})` : ''}</strong>
+                                  <span className="record-amount">{record.amount}{record.unit}</span>
+                                </div>
+                                <button className="btn-delete-small" onClick={() => handleDelete(record.id)}>
+                                  ×
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        ))}
                     </div>
                   </div>
                 ))}
