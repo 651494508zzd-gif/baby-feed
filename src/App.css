@@ -125,6 +125,16 @@ body {
   gap: 12px;
 }
 
+@media (max-width: 380px) {
+  .input-group {
+    flex-direction: column;
+  }
+
+  .input-group .btn-primary {
+    width: 100%;
+  }
+}
+
 .input-group input {
   flex: 1;
   padding: 16px 18px;
