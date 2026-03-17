@@ -92,7 +92,7 @@ function App() {
         {activeTab === 'home' && (
           <div className="tab-content">
             <div className="input-section">
-              <h2>快速记录</h2>
+              <h2>Quick Record</h2>
               <div className="input-group">
                 <input
                   type="text"
