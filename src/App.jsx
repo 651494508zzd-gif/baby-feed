@@ -1,8 +1,9 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import './App.css';
 import { getRecords, saveRecord, deleteRecord, getTodayRecords, getWeekRecords } from './services/storageService';
 import { parseVoiceInput, getTypeName, getTypeIcon } from './services/voiceParser';
 import { generateWeeklyReport } from './services/reportService';
+import { VoiceRecognition, isSpeechRecognitionSupported } from './services/voiceRecognition';
 
 function App() {
   const [records, setRecords] = useState([]);
@@ -11,9 +12,16 @@ function App() {
   const [showReport, setShowReport] = useState(false);
   const [report, setReport] = useState(null);
   const [activeTab, setActiveTab] = useState('home');
+  const [isListening, setIsListening] = useState(false);
+  const [interimTranscript, setInterimTranscript] = useState('');
+  const voiceRecognitionRef = useRef(null);
 
   useEffect(() => {
     loadRecords();
+    // 初始化语音识别
+    if (isSpeechRecognitionSupported()) {
+      voiceRecognitionRef.current = new VoiceRecognition();
+    }
   }, []);
 
   const loadRecords = () => {
@@ -30,6 +38,47 @@ function App() {
     } else {
       alert('无法解析，请尝试输入如：宝宝13:00喝奶180ml');
     }
+  };
+
+  const handleVoiceInput = () => {
+    if (!isSpeechRecognitionSupported()) {
+      alert('您的浏览器不支持语音识别功能，请使用 Chrome 或 Safari 浏览器');
+      return;
+    }
+
+    if (isListening) {
+      voiceRecognitionRef.current?.stop();
+      setIsListening(false);
+      return;
+    }
+
+    setIsListening(true);
+    setInterimTranscript('');
+
+    voiceRecognitionRef.current?.start(
+      (final, interim) => {
+        if (interim) {
+          setInterimTranscript(interim);
+        }
+        if (final) {
+          setInputText(final);
+          setInterimTranscript('');
+        }
+      },
+      () => {
+        setIsListening(false);
+        setInterimTranscript('');
+        // 自动触发解析
+        if (inputText.trim()) {
+          setTimeout(() => handleParse(), 300);
+        }
+      },
+      (error) => {
+        setIsListening(false);
+        setInterimTranscript('');
+        console.error('语音识别错误:', error);
+      }
+    );
   };
 
   const handleSave = () => {
@@ -96,11 +145,23 @@ function App() {
               <div className="input-group">
                 <input
                   type="text"
-                  value={inputText}
+                  value={interimTranscript || inputText}
                   onChange={(e) => setInputText(e.target.value)}
-                  placeholder="宝宝13:00喝奶180ml"
+                  placeholder={isListening ? "正在聆听..." : "宝宝13:00喝奶180ml"}
                   onKeyPress={(e) => e.key === 'Enter' && handleParse()}
+                  disabled={isListening}
                 />
+                <button
+                  className={`btn-voice ${isListening ? 'listening' : ''}`}
+                  onClick={handleVoiceInput}
+                  title="语音输入"
+                >
+                  {isListening ? (
+                    <span className="voice-icon">🔴</span>
+                  ) : (
+                    <span className="voice-icon">🎤</span>
+                  )}
+                </button>
                 <button className="btn-primary" onClick={handleParse}>
                   解析
                 </button>
