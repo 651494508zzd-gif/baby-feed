@@ -57,13 +57,59 @@ const parseType = (text) => {
   return null;
 };
 
+// 中文数字转阿拉伯数字
+const chineseNumberToArabic = (text) => {
+  const chineseNumMap = {
+    '零': 0, '一': 1, '二': 2, '三': 3, '四': 4,
+    '五': 5, '六': 6, '七': 7, '八': 8, '九': 9, '十': 10
+  };
+
+  // 匹配中文数字组合
+  const chineseNumMatch = text.match(/([零一二三四五六七八九十]+)/);
+  if (!chineseNumMatch) return null;
+
+  const chineseNum = chineseNumMatch[1];
+
+  // 处理纯十（如"九十"、"十五"）
+  if (chineseNum.length >= 2 && chineseNum.includes('十')) {
+    let result = 0;
+    const parts = chineseNum.split('十');
+
+    if (parts[0] === '' || parts[0] === '十') {
+      // 十、十五 -> 10, 15
+      result = parts[1] ? chineseNumMap[parts[1]] : 10;
+    } else if (parts[1] === '') {
+      // 九十 -> 90
+      result = chineseNumMap[parts[0]] * 10;
+    } else {
+      // 二十五 -> 25
+      result = (chineseNumMap[parts[0]] || 1) * 10 + (chineseNumMap[parts[1]] || 0);
+    }
+    return result;
+  }
+
+  // 处理个位数
+  if (chineseNum.length === 1) {
+    return chineseNumMap[chineseNum] !== undefined ? chineseNumMap[chineseNum] : null;
+  }
+
+  return null;
+};
+
 // 解析数量
 const parseAmount = (text) => {
-  // 匹配数字
+  // 先尝试匹配阿拉伯数字
   const numMatch = text.match(/(\d+)/);
-  if (!numMatch) return null;
+  let amount = null;
 
-  const amount = parseInt(numMatch[1]);
+  if (numMatch) {
+    amount = parseInt(numMatch[1]);
+  } else {
+    // 尝试匹配中文数字
+    amount = chineseNumberToArabic(text);
+  }
+
+  if (!amount) return null;
 
   // 判断单位
   if (text.includes('克') || text.includes('g')) {
