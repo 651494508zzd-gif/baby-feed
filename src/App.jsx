@@ -1,9 +1,10 @@
 import { useState, useEffect, useRef } from 'react';
 import './App.css';
 import { getRecords, saveRecord, deleteRecord, getTodayRecords, getWeekRecords } from './services/storageService';
-import { parseVoiceInput, getTypeName, getTypeIcon, getDisplayName } from './services/voiceParser';
+import { parseVoiceInput, getTypeName, getDisplayName } from './services/voiceParser';
 import { generateWeeklyReport } from './services/reportService';
 import { VoiceRecognition, isSpeechRecognitionSupported } from './services/voiceRecognition';
+import { Baby, UtensilsCrossed, Mic, X, Home, List, BarChart3, Clock, TrendingUp, Lightbulb, FileText, Plus } from 'lucide-react';
 
 function App() {
   const [records, setRecords] = useState([]);
@@ -18,7 +19,6 @@ function App() {
 
   useEffect(() => {
     loadRecords();
-    // 初始化语音识别
     if (isSpeechRecognitionSupported()) {
       voiceRecognitionRef.current = new VoiceRecognition();
     }
@@ -68,7 +68,6 @@ function App() {
       () => {
         setIsListening(false);
         setInterimTranscript('');
-        // 自动触发解析
         if (inputText.trim()) {
           setTimeout(() => handleParse(), 300);
         }
@@ -128,48 +127,45 @@ function App() {
     return date.toLocaleDateString('zh-CN', { month: 'short', day: 'numeric' });
   };
 
-  // 获取一周的日期范围
   const getWeekRange = (date) => {
     const start = new Date(date);
     const day = start.getDay();
-    const diff = start.getDate() - day + (day === 0 ? -6 : 1); // 周一到周日
+    const diff = start.getDate() - day + (day === 0 ? -6 : 1);
     start.setDate(diff);
     start.setHours(0, 0, 0, 0);
-
     const end = new Date(start);
     end.setDate(start.getDate() + 6);
     end.setHours(23, 59, 59, 999);
-
     return { start, end };
   };
 
-  // 按周分组记录
   const groupRecordsByWeek = (records) => {
     const groups = {};
-
     records.forEach(record => {
       const date = new Date(record.timestamp);
       const { start, end } = getWeekRange(date);
       const key = `${start.getTime()}-${end.getTime()}`;
-
       if (!groups[key]) {
-        groups[key] = {
-          start,
-          end,
-          records: []
-        };
+        groups[key] = { start, end, records: [] };
       }
       groups[key].records.push(record);
     });
-
-    // 按时间倒序排列
     return Object.values(groups).sort((a, b) => b.start - a.start);
   };
 
-  // 格式化周范围显示
   const formatWeekRange = (start, end) => {
     const options = { month: 'short', day: 'numeric' };
     return `${start.toLocaleDateString('zh-CN', options)} - ${end.toLocaleDateString('zh-CN', options)}`;
+  };
+
+  const getTypeIcon = (type) => {
+    return type === 'milk'
+      ? <Baby size={28} strokeWidth={1.5} />
+      : <UtensilsCrossed size={28} strokeWidth={1.5} />;
+  };
+
+  const getTypeName = (type) => {
+    return type === 'milk' ? '喝奶' : '辅食';
   };
 
   return (
@@ -179,49 +175,110 @@ function App() {
           <h1>宝宝喂养记录</h1>
           <p className="header-subtitle">记录每一次成长</p>
         </div>
+        <div className="header-decoration"></div>
       </header>
 
       <main className="main">
         {activeTab === 'home' && (
           <div className="tab-content">
-            <div className="input-section">
-              <h2>Quick Record</h2>
-              <div className="input-group">
-                <input
-                  type="text"
-                  value={interimTranscript || inputText}
-                  onChange={(e) => setInputText(e.target.value)}
-                  placeholder={isListening ? "正在聆听..." : "宝宝13:00喝奶180ml"}
-                  onKeyPress={(e) => e.key === 'Enter' && handleParse()}
-                  disabled={isListening}
-                />
-                <button
-                  className={`btn-voice ${isListening ? 'listening' : ''}`}
-                  onClick={handleVoiceInput}
-                  title="语音输入"
-                >
-                  {isListening ? (
-                    <span className="voice-icon">🔴</span>
-                  ) : (
-                    <span className="voice-icon">🎤</span>
-                  )}
-                </button>
-                <button className="btn-primary" onClick={handleParse}>
-                  解析
-                </button>
+            {/* Bento Grid Layout */}
+            <div className="bento-grid">
+              {/* Input Card - Large */}
+              <div className="bento-card input-card">
+                <div className="card-label">
+                  <Plus size={14} />
+                  <span>Quick Record</span>
+                </div>
+                <div className="input-wrapper">
+                  <input
+                    type="text"
+                    value={interimTranscript || inputText}
+                    onChange={(e) => setInputText(e.target.value)}
+                    placeholder={isListening ? "正在聆听..." : "宝宝13:00喝奶180ml"}
+                    onKeyPress={(e) => e.key === 'Enter' && handleParse()}
+                    disabled={isListening}
+                  />
+                  <div className="input-actions">
+                    <button
+                      className={`btn-icon ${isListening ? 'listening' : ''}`}
+                      onClick={handleVoiceInput}
+                    >
+                      <Mic size={20} strokeWidth={1.5} />
+                    </button>
+                    <button className="btn-primary" onClick={handleParse}>
+                      解析
+                    </button>
+                  </div>
+                </div>
               </div>
-              <p className="hint">支持：时间 + 喝奶/辅食 + 数量</p>
+
+              {/* Stats Card */}
+              <div className="bento-card stats-card">
+                <div className="card-label">
+                  <TrendingUp size={14} />
+                  <span>今日</span>
+                </div>
+                <div className="stats-numbers">
+                  <div className="stat-item">
+                    <span className="stat-value">{todayMilk}</span>
+                    <span className="stat-unit">ml</span>
+                  </div>
+                  <div className="stat-divider"></div>
+                  <div className="stat-item">
+                    <span className="stat-value">{todaySolid}</span>
+                    <span className="stat-unit">g</span>
+                  </div>
+                </div>
+                <p className="stats-hint">{todayRecords.length} 条记录</p>
+              </div>
+
+              {/* Milk Card */}
+              <div className="bento-card milk-card">
+                <div className="card-icon milk">
+                  <Baby size={32} strokeWidth={1.5} />
+                </div>
+                <div className="card-content">
+                  <span className="card-value">{todayMilk}</span>
+                  <span className="card-unit">ml</span>
+                </div>
+                <span className="card-label-bottom">奶量</span>
+              </div>
+
+              {/* Solid Card */}
+              <div className="bento-card solid-card">
+                <div className="card-icon solid">
+                  <UtensilsCrossed size={32} strokeWidth={1.5} />
+                </div>
+                <div className="card-content">
+                  <span className="card-value">{todaySolid}</span>
+                  <span className="card-unit">g</span>
+                </div>
+                <span className="card-label-bottom">辅食</span>
+              </div>
             </div>
 
+            {/* Confirm Section */}
             {parsedRecord && (
               <div className="confirm-section">
-                <h3>确认记录</h3>
-                <div className="confirm-card">
-                  <div className="confirm-icon">{getTypeIcon(parsedRecord.type)}</div>
+                <div className="confirm-header">
+                  <h3>确认记录</h3>
+                  <button className="btn-close" onClick={() => setParsedRecord(null)}>
+                    <X size={18} strokeWidth={2} />
+                  </button>
+                </div>
+                <div className="confirm-body">
+                  <div className="confirm-icon">
+                    {getTypeIcon(parsedRecord.type)}
+                  </div>
                   <div className="confirm-info">
-                    <p><strong>{getTypeName(parsedRecord.type)}{parsedRecord.foodName ? ` (${parsedRecord.foodName})` : ''}</strong></p>
-                    <p>时间：{formatTime(parsedRecord.timestamp)}</p>
-                    <p>数量：{parsedRecord.amount}{parsedRecord.unit}</p>
+                    <p className="confirm-type">
+                      {getTypeName(parsedRecord.type)}
+                      {parsedRecord.foodName && <span className="food-name">{parsedRecord.foodName}</span>}
+                    </p>
+                    <div className="confirm-details">
+                      <span><Clock size={12} /> {formatTime(parsedRecord.timestamp)}</span>
+                      <span>{parsedRecord.amount}{parsedRecord.unit}</span>
+                    </div>
                   </div>
                 </div>
                 <div className="confirm-actions">
@@ -231,34 +288,20 @@ function App() {
               </div>
             )}
 
-            <div className="today-summary">
-              <h2>今日摘要</h2>
-              <div className="summary-cards">
-                <div className="summary-card milk">
-                  <span className="icon">🍼</span>
-                  <span className="value">{todayMilk}</span>
-                  <span className="unit">ml</span>
-                </div>
-                <div className="summary-card solid">
-                  <span className="icon">🍚</span>
-                  <span className="value">{todaySolid}</span>
-                  <span className="unit">g</span>
-                </div>
-              </div>
-              <p className="summary-hint">今日共 {todayRecords.length} 条记录</p>
-            </div>
-
+            {/* Recent Records */}
             {records.length > 0 && (
-              <div className="recent-records">
-                <h3>最近记录</h3>
+              <div className="recent-section">
+                <h2>最近记录</h2>
                 <div className="record-list">
                   {records.slice(0, 5).map(record => (
                     <div key={record.id} className="record-item">
-                      <span className="record-icon">{getTypeIcon(record.type)}</span>
-                      <span className="record-info">
+                      <div className="record-icon-wrap">
+                        {getTypeIcon(record.type)}
+                      </div>
+                      <div className="record-content">
                         <strong>{getTypeName(record.type)}{record.foodName ? ` (${record.foodName})` : ''}</strong>
                         <span>{record.amount}{record.unit}</span>
-                      </span>
+                      </div>
                       <span className="record-time">
                         {formatDate(record.timestamp)} {formatTime(record.timestamp)}
                       </span>
@@ -275,7 +318,7 @@ function App() {
             <h2>历史记录</h2>
             {records.length === 0 ? (
               <div className="empty-state">
-                <span>📝</span>
+                <FileText size={48} strokeWidth={1} />
                 <p>暂无记录，快去记录吧！</p>
               </div>
             ) : (
@@ -284,7 +327,7 @@ function App() {
                   <div key={`${group.start.getTime()}-${group.end.getTime()}`} className="week-group">
                     <div className="week-header">
                       <span className="week-range">{group.start.getFullYear()}年 {formatWeekRange(group.start, group.end)}</span>
-                      <span className="week-count">{group.records.length} 条记录</span>
+                      <span className="week-count">{group.records.length} 条</span>
                     </div>
                     <div className="timeline">
                       {group.records
@@ -301,13 +344,15 @@ function App() {
                             </div>
                             <div className="timeline-content">
                               <div className="record-card-mini">
-                                <span className="record-icon">{getTypeIcon(record.type)}</span>
+                                <div className="record-icon-wrap small">
+                                  {getTypeIcon(record.type)}
+                                </div>
                                 <div className="record-details">
                                   <strong>{getTypeName(record.type)}{record.foodName ? ` (${record.foodName})` : ''}</strong>
                                   <span className="record-amount">{record.amount}{record.unit}</span>
                                 </div>
                                 <button className="btn-delete-small" onClick={() => handleDelete(record.id)}>
-                                  ×
+                                  <X size={14} strokeWidth={2} />
                                 </button>
                               </div>
                             </div>
@@ -326,23 +371,33 @@ function App() {
             <h2>本周周报</h2>
             {showReport && report ? (
               <div className="report-content">
-                <div className="report-summary">
-                  <div className="report-card">
-                    <h3>🍼 奶量统计</h3>
-                    <p>本周总量：<strong>{report.totalMilk}</strong> ml</p>
-                    <p>日均：<strong>{report.avgMilkPerDay}</strong> ml/天</p>
+                <div className="bento-grid report-grid">
+                  <div className="bento-card report-card milk">
+                    <div className="report-icon">
+                      <Baby size={24} strokeWidth={1.5} />
+                    </div>
+                    <h4>奶量统计</h4>
+                    <div className="report-value">{report.totalMilk}</div>
+                    <span className="report-unit">ml 本周总量</span>
+                    <div className="report-avg">日均 {report.avgMilkPerDay} ml</div>
                   </div>
-                  <div className="report-card">
-                    <h3>🍚 辅食统计</h3>
-                    <p>本周总量：<strong>{report.totalSolid}</strong> g</p>
-                    <p>日均：<strong>{report.avgSolidPerDay}</strong> g/天</p>
+                  <div className="bento-card report-card solid">
+                    <div className="report-icon">
+                      <UtensilsCrossed size={24} strokeWidth={1.5} />
+                    </div>
+                    <h4>辅食统计</h4>
+                    <div className="report-value">{report.totalSolid}</div>
+                    <span className="report-unit">g 本周总量</span>
+                    <div className="report-avg">日均 {report.avgSolidPerDay} g</div>
                   </div>
                 </div>
-                <div className="report-records">
-                  <p>本周共记录 <strong>{report.totalRecords}</strong> 次</p>
+                <div className="report-total">
+                  <span>本周共记录</span>
+                  <strong>{report.totalRecords}</strong>
+                  <span>次</span>
                 </div>
                 <div className="report-suggestions">
-                  <h3>📋 喂养建议</h3>
+                  <h3><Lightbulb size={18} strokeWidth={1.5} /> 喂养建议</h3>
                   <ul>
                     {report.suggestions.map((suggestion, index) => (
                       <li key={index}>{suggestion}</li>
@@ -352,7 +407,7 @@ function App() {
               </div>
             ) : (
               <div className="empty-state">
-                <span>📊</span>
+                <BarChart3 size={48} strokeWidth={1} />
                 <p>点击生成周报</p>
               </div>
             )}
@@ -365,21 +420,21 @@ function App() {
           className={`tab-btn ${activeTab === 'home' ? 'active' : ''}`}
           onClick={() => handleTabChange('home')}
         >
-          <span>🏠</span>
+          <Home size={22} strokeWidth={1.5} />
           <span>首页</span>
         </button>
         <button
           className={`tab-btn ${activeTab === 'history' ? 'active' : ''}`}
           onClick={() => handleTabChange('history')}
         >
-          <span>📋</span>
+          <List size={22} strokeWidth={1.5} />
           <span>记录</span>
         </button>
         <button
           className={`tab-btn ${activeTab === 'report' ? 'active' : ''}`}
           onClick={() => handleTabChange('report')}
         >
-          <span>📊</span>
+          <BarChart3 size={22} strokeWidth={1.5} />
           <span>周报</span>
         </button>
       </nav>
