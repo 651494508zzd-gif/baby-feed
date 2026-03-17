@@ -123,15 +123,31 @@ body {
 .input-group {
   display: flex;
   gap: 12px;
+  width: 100%;
 }
 
-@media (max-width: 380px) {
+.input-group input {
+  flex: 1;
+  min-width: 0;
+  width: 100%;
+}
+
+.input-group .btn-primary {
+  flex-shrink: 0;
+}
+
+@media (max-width: 420px) {
   .input-group {
     flex-direction: column;
   }
 
+  .input-group input,
   .input-group .btn-primary {
     width: 100%;
+  }
+
+  .input-group .btn-primary {
+    padding: 16px;
   }
 }
 
